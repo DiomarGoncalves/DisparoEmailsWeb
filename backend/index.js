@@ -222,12 +222,12 @@ app.delete('/remetentes', (req, res) => {
   });
 });
 
-// Rota para buscar todos os remetentes
+// Corrigir a rota para buscar todos os remetentes
 app.get('/remetentes', (req, res) => {
   db.all(`SELECT id, email, smtp, porta FROM remetente`, [], (err, rows) => {
     if (err) {
       console.error('Erro ao buscar remetentes:', err.message);
-      return res.status(500).json({ success: false, error: err.message });
+      return res.status(500).json({ success: false, error: "Erro ao buscar remetentes." });
     }
     res.json({ success: true, remetentes: rows });
   });
