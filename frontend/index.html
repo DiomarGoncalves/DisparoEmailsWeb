@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+  <!-- Adicionei a classe "dark" para forçar o tema escuro -->
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sistema de E-mails - Pós-venda</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      // Configuração do Tailwind para suportar o tema escuro
+      tailwind.config = {
+        darkMode: "class", // Habilita o modo escuro baseado na classe "dark"
+      };
+    </script>
+    <link
+      href="https://cdn.quilljs.com/1.3.7/quill.snow.css"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
+    <style>
+      /* From Uiverse.io by kennyotsu-monochromia */
+      .Btn {
+        --black: #000000;
+        --ch-black: #141414;
+        --eer-black: #1b1b1b;
+        --night-rider: #2e2e2e;
+        --white: #ffffff;
+        --af-white: #f3f3f3;
+        --ch-white: #e1e1e1;
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        width: 45px;
+        height: 45px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        position: absolute;
+        right: 30px;
+        top: 50px;
+        z-index: 1;
+        overflow: hidden;
+        transition-duration: 0.3s;
+        box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.199);
+        background-color: var(--night-rider);
+      }
+
+      /* plus sign */
+      .sign {
+        width: 100%;
+        transition-duration: 0.3s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .sign svg {
+        width: 17px;
+      }
+
+      .sign svg path {
+        fill: var(--af-white);
+      }
+      /* text */
+      .text {
+        position: absolute;
+        right: 0%;
+        width: 0%;
+        opacity: 0;
+        color: var(--af-white);
+        font-size: 1.2em;
+        font-weight: 600;
+        transition-duration: 0.3s;
+      }
+      /* hover effect on button width */
+      .Btn:hover {
+        width: 125px;
+        border-radius: 5px;
+        transition-duration: 0.3s;
+      }
+
+      .Btn:hover .sign {
+        width: 30%;
+        transition-duration: 0.3s;
+        padding-left: 20px;
+      }
+      /* hover effect button's text */
+      .Btn:hover .text {
+        opacity: 1;
+        width: 70%;
+        transition-duration: 0.3s;
+        padding-right: 10px;
+      }
+      /* button click effect*/
+      .Btn:active {
+        transform: translate(2px, 2px);
+      }
+    </style>
+  </head>
+  <body class="bg-gray-900 text-gray-100">
+    <!-- Certifiquei-me de que o tema escuro seja aplicado -->
+    <div class="max-w-5xl mx-auto p-4">
+      <h1 class="text-3xl font-bold text-center mb-6">
+        Sistema de Disparo de E-mails
+      </h1>
+      <!-- From Uiverse.io by kennyotsu-monochromia -->
+      <button class="Btn">
+        <div class="sign">
+          <svg viewBox="0 0 512 512">
+            <path
+              d="M377.9 105.9L500.7 228.7c7.2 7.2 11.3 17.1 11.3 27.3s-4.1 20.1-11.3 27.3L377.9 406.1c-6.4 6.4-15 9.9-24 9.9c-18.7 0-33.9-15.2-33.9-33.9l0-62.1-128 0c-17.7 0-32-14.3-32-32l0-64c0-17.7 14.3-32 32-32l128 0 0-62.1c0-18.7 15.2-33.9 33.9-33.9c9 0 17.6 3.6 24 9.9zM160 96L96 96c-17.7 0-32 14.3-32 32l0 256c0 17.7 14.3 32 32 32l64 0c17.7 0 32 14.3 32 32s-14.3 32-32 32l-64 0c-53 0-96-43-96-96L0 128C0 75 43 32 96 32l64 0c17.7 0 32 14.3 32 32s-14.3 32-32 32z"
+            ></path>
+          </svg>
+        </div>
+
+        <div class="text">Logout</div>
+      </button>
+
+      <!-- Mensagem de feedback -->
+      <div id="feedback" class="hidden p-4 mb-4 text-white rounded"></div>
+
+      <!-- Navegação -->
+      <div class="flex justify-center gap-4 mb-6">
+        <button
+          onclick="showTab('config')"
+          class="btn bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
+          id="btn-config"
+        >
+          Configurações
+        </button>
+        <button
+          onclick="showTab('clientes')"
+          class="btn bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
+          id="btn-clientes"
+        >
+          Clientes
+        </button>
+        <button
+          onclick="showTab('mensagens')"
+          class="btn bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
+          id="btn-mensagens"
+        >
+          Mensagens
+        </button>
+        <button
+          onclick="showTab('programacoes')"
+          class="btn bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
+          id="btn-programacoes"
+        >
+          Configuração de Envio
+        </button>
+      </div>
+
+      <!-- Aba: Configurações de Email -->
+      <div id="tab-config" class="tab">
+        <h2 class="text-xl font-semibold mb-4">Configuração do E-mail</h2>
+        <form class="grid gap-4" id="form-config">
+          <input type="hidden" id="remetente-id" />
+          <input
+            type="email"
+            placeholder="Seu e-mail"
+            class="input bg-white text-black border-gray-300 rounded-lg p-2"
+            id="email-config"
+          />
+          <input
+            type="password"
+            placeholder="Senha do e-mail"
+            class="input bg-white text-black border-gray-300 rounded-lg p-2"
+            id="senha-config"
+          />
+          <input
+            type="text"
+            placeholder="Servidor SMTP"
+            class="input bg-white text-black border-gray-300 rounded-lg p-2"
+            id="smtp-config"
+          />
+          <input
+            type="number"
+            placeholder="Porta"
+            class="input bg-white text-black border-gray-300 rounded-lg p-2"
+            id="porta-config"
+          />
+          <button
+            type="submit"
+            class="bg-blue-700 text-white px-4 py-2 rounded hover:bg-blue-800"
+          >
+            Salvar
+          </button>
+          <button
+            type="button"
+            id="btn-excluir-remetente"
+            class="bg-red-700 text-white px-4 py-2 rounded hover:bg-red-800"
+          >
+            Excluir Configuração
+          </button>
+        </form>
+
+        <!-- Lista de remetentes -->
+        <h3 class="text-lg font-bold mt-6">Remetentes Cadastrados</h3>
+        <ul
+          id="lista-remetentes"
+          class="bg-gray-800 p-4 rounded shadow divide-y divide-gray-700"
+        >
+          <!-- Lista será preenchida dinamicamente -->
+        </ul>
+      </div>
+
+      <!-- Aba: Cadastro de Clientes -->
+      <div id="tab-clientes" class="tab hidden">
+        <h2 class="text-xl font-semibold mb-4">Cadastro de Clientes</h2>
+        <form class="grid gap-4 mb-4">
+          <input
+            type="text"
+            placeholder="Nome do Cliente"
+            class="input bg-white text-black border-gray-300 rounded-lg p-2"
+            id="nome-cliente"
+          />
+          <input
+            type="email"
+            placeholder="E-mail do Cliente"
+            class="input bg-white text-black border-gray-300 rounded-lg p-2"
+            id="email-cliente"
+          />
+          <select
+            id="remetente-cliente"
+            class="input bg-white text-black border-gray-300 rounded-lg p-2"
+          >
+            <option value="">Selecione um remetente</option>
+            <!-- Remetentes serão carregados dinamicamente -->
+          </select>
+          <button
+            type="submit"
+            class="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800"
+          >
+            Adicionar
+          </button>
+        </form>
+        <button
+          type="button"
+          id="btn-importar-planilha"
+          class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 mb-4"
+        >
+          Importar Planilha Excel
+        </button>
+        <button
+          type="button"
+          id="btn-exportar-planilha"
+          class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 mb-4"
+        >
+          Exportar Lista para Excel
+        </button>
+        <ul
+          class="bg-gray-800 p-4 rounded shadow divide-y divide-gray-700"
+          id="lista-clientes"
+        >
+          <!-- Lista de clientes será preenchida dinamicamente -->
+        </ul>
+      </div>
+
+      <!-- Aba: Envio de Mensagens -->
+      <div
+        id="tab-mensagens"
+        class="tab hidden bg-gray-800 p-6 rounded-lg shadow"
+        style="position: absolute; left: 1%; width: 98vw"
+      >
+        <h2 class="text-xl font-semibold mb-4">Mensagem</h2>
+        <form class="grid gap-4" id="form-mensagem">
+          <select
+            class="input bg-white text-black border-gray-300 rounded-lg"
+            id="cliente-mensagem"
+            multiple
+          >
+            <option value="all">Selecionar Todos</option>
+          </select>
+          <input
+            type="text"
+            placeholder="Assunto"
+            class="input bg-white text-black border-gray-300 rounded-lg p-2"
+            id="assunto-mensagem"
+          />
+          <div
+            id="editor-container"
+            class="bg-white text-black border-gray-300 rounded-lg"
+            style="height: 300px"
+          ></div>
+          <select
+            id="remetente-mensagem"
+            class="input bg-white text-black border-gray-300 rounded-lg p-2"
+          >
+            <option value="">Selecione um remetente</option>
+            <!-- Remetentes serão carregados dinamicamente -->
+          </select>
+
+          <!-- Gerenciar Templates -->
+          <input
+            type="file"
+            class="input bg-white text-black border-gray-300 rounded-lg p-3"
+            id="anexo-mensagem"
+          />
+          <button
+            type="submit"
+            class="bg-purple-700 text-white px-4 py-2 rounded hover:bg-purple-800"
+          >
+            Enviar E-mail
+          </button>
+          <div class="mt-6">
+            <h3 class="text-lg font-bold mb-4">Gerenciar Templates</h3>
+            <form id="form-template" class="mb-4">
+              <label for="nome-template" class="block mb-2"
+                >Nome do Template:</label
+              >
+              <input
+                type="text"
+                id="nome-template"
+                class="input bg-white text-black border-gray-300 rounded-lg p-2"
+                placeholder="Digite o nome do template"
+              />
+              <button
+                type="button"
+                id="btn-salvar-template"
+                class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+              >
+                Salvar Template
+              </button>
+            </form>
+            <h3 class="text-lg font-bold mb-2">Templates Salvos</h3>
+            <ul
+              id="lista-templates"
+              class="bg-gray-700 p-4 rounded shadow divide-y divide-gray-600"
+            >
+              <!-- Exemplo de item de template -->
+              <li class="py-2 flex justify-between items-center">
+                Nome do Template
+                <div class="flex gap-2">
+                  <button
+                    class="carregar-template bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700"
+                    data-template-id="1"
+                  >
+                    Carregar
+                  </button>
+                  <button
+                    class="excluir-template bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700"
+                    data-template-id="1"
+                  >
+                    Excluir
+                  </button>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </form>
+      </div>
+
+      <!-- Aba de Programações -->
+      <div id="tab-programacoes" class="tab hidden">
+        <h2 class="text-xl font-bold mb-4">Configurar Programações</h2>
+        <form id="form-programacao" class="mb-4 inline-flex items-center">
+          <label for="template-programacao" class="block m-2">Template:</label>
+          <select
+            id="template-programacao"
+            class="input bg-white text-black border-gray-300 rounded-lg p-2"
+          >
+            <option value="">Selecione um template</option>
+            <!-- Templates serão carregados dinamicamente -->
+          </select>
+
+          <label for="dia-semana-programacao" class="block m-2"
+            >Dia da Semana:</label
+          >
+          <select
+            id="dia-semana-programacao"
+            class="input bg-white text-black border-gray-300 rounded-lg p-2"
+          >
+            <option value="segunda-feira">Segunda-feira</option>
+            <option value="terça-feira">Terça-feira</option>
+            <option value="quarta-feira">Quarta-feira</option>
+            <option value="quinta-feira">Quinta-feira</option>
+            <option value="sexta-feira">Sexta-feira</option>
+            <option value="sábado">Sábado</option>
+            <option value="domingo">Domingo</option>
+          </select>
+
+          <label for="hora-programacao" class="block m-2">Hora:</label>
+          <input
+            type="time"
+            id="hora-programacao"
+            class="input bg-white text-black border-gray-300 rounded-lg p-2"
+          />
+
+          <label for="remetente-programacao" class="block m-2"
+            >Remetente:</label
+          >
+          <select
+            id="remetente-programacao"
+            class="input bg-white text-black border-gray-300 rounded-lg p-2"
+          >
+            <option value="">Selecione um remetente</option>
+            <!-- Remetentes serão carregados dinamicamente -->
+          </select>
+
+          <button
+            type="button"
+            id="btn-salvar-programacao"
+            class="bg-blue-600 text-white px-2 py-2 rounded hover:bg-blue-700 m-2"
+          >
+            Salvar Programação
+          </button>
+        </form>
+
+        <h3 class="text-lg font-bold mb-2">Programações Configuradas</h3>
+        <ul
+          id="lista-programacoes"
+          class="bg-gray-800 p-4 rounded shadow divide-y divide-gray-700"
+        >
+          <!-- Cada item de programação terá um checkbox para ativar/desativar -->
+          <!-- Exemplo de item -->
+          <!--
+        <li class="py-2 flex justify-between items-center">
+          Segunda-feira às 10:00 - Template: Nome do Template
+          <div class="flex gap-2 items-center">
+            <label class="flex items-center gap-2">
+              <input type="checkbox" class="toggle-programacao" data-programacao-id="1" checked />
+              Ativo
+            </label>
+            <button class="bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700" onclick="excluirProgramacao(1)">Excluir</button>
+          </div>
+        </li>
+        --></ul>
+      </div>
+    </div>
+
+    <style>
+      .input {
+        @apply px-4 py-2 border border-gray-300 bg-white text-black rounded shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500;
+      }
+      .btn {
+        @apply bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-600;
+      }
+      .tab {
+        @apply mt-4;
+      }
+      .hidden {
+        display: none;
+      }
+      .success {
+        background-color: #38a169;
+      }
+      .error {
+        background-color: #e53e3e;
+      }
+    </style>
+
+    <script src="script.js"></script>
+    <script>
+      document.querySelector(".Btn").addEventListener("click", () => {
+        console.log("Deslogando usuário..."); // Log para depuração
+        localStorage.removeItem("token"); // Remove o token do localStorage
+        window.location.href = "/login.html"; // Redireciona para a página de login
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,63 @@
+{
+  "name": "disparo_emails",
+  "version": "1.0.0",
+  "description": "Sistema de Disparo de E-mails",
+  "main": "backend/index.js",
+  "scripts": {
+    "start": "electron .",
+    "package": "electron-forge package",
+    "make": "electron-forge make"
+  },
+  "author": "Seu Nome <seuemail@exemplo.com>",
+  "license": "MIT",
+  "config": {
+    "forge": {
+      "packagerConfig": {
+        "icon": "assets/logo"
+      },
+      "makers": [
+        {
+          "name": "@electron-forge/maker-squirrel",
+          "config": {
+            "setupIcon": "assets/logo.ico"
+          }
+        },
+        {
+          "name": "@electron-forge/maker-zip",
+          "platforms": [
+            "darwin",
+            "linux",
+            "win32"
+          ]
+        },
+        {
+          "name": "@electron-forge/maker-deb",
+          "config": {}
+        },
+        {
+          "name": "@electron-forge/maker-rpm",
+          "config": {}
+        }
+      ]
+    }
+  },
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "electron-winstaller": "^5.0.0",
+    "express": "^5.1.0",
+    "express-jwt": "^8.5.1",
+    "jsdom": "^26.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "nodemailer": "^6.9.3",
+    "sqlite3": "^5.1.6",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@electron-forge/cli": "^6.0.0",
+    "@electron-forge/maker-deb": "^6.0.0",
+    "@electron-forge/maker-rpm": "^6.0.0",
+    "@electron-forge/maker-squirrel": "^6.0.0",
+    "@electron-forge/maker-zip": "^6.0.0",
+    "electron": "^35.2.1"
+  }
+}
