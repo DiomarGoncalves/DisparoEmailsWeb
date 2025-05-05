@@ -13,7 +13,7 @@ async function carregarRemetentes() {
     }
     const result = await response.json();
 
-    if (result.success && result.remetentes) {
+    if (result.success && Array.isArray(result.remetentes)) {
       result.remetentes.forEach((remetente) => {
         const li = document.createElement("li");
         li.className = "py-2 flex justify-between items-center";
@@ -29,6 +29,7 @@ async function carregarRemetentes() {
         listaRemetentes.appendChild(li);
       });
     } else {
+      console.error("Resposta inesperada da API:", result);
       throw new Error(result.error || "Erro ao carregar lista de remetentes.");
     }
   } catch (error) {
@@ -86,6 +87,40 @@ document.getElementById("lista-remetentes").addEventListener("click", async (e) 
       console.error("Erro ao excluir remetente:", error);
       showFeedback("Erro ao excluir remetente.", "error");
     }
+  }
+});
+
+// Salvar ou editar remetente
+document.getElementById("form-config").addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const id = document.getElementById("remetente-id").value;
+  const email = document.getElementById("email-config").value;
+  const senha = document.getElementById("senha-config").value;
+  const smtp = document.getElementById("smtp-config").value;
+  const porta = parseInt(document.getElementById("porta-config").value, 10);
+
+  const remetente = { id, email, senha, smtp, porta };
+
+  try {
+    const response = await fetchWithAuth("http://localhost:3000/remetentes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(remetente),
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      showFeedback(id ? "Remetente editado com sucesso!" : "Remetente salvo com sucesso!", "success");
+      carregarRemetentes(); // Atualiza a lista
+      document.getElementById("form-config").reset(); // Limpa o formulário
+    } else {
+      showFeedback("Erro ao salvar remetente: " + result.error, "error");
+    }
+  } catch (error) {
+    console.error("Erro ao salvar remetente:", error);
+    showFeedback("Erro ao salvar remetente.", "error");
   }
 });
 

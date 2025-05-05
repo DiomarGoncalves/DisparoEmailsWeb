@@ -202,6 +202,7 @@
       <div id="tab-clientes" class="tab hidden">
         <h2 class="text-xl font-semibold mb-4">Cadastro de Clientes</h2>
         <form class="grid gap-4 mb-4">
+          <input type="hidden" id="cliente-id" />
           <input
             type="text"
             placeholder="Nome do Cliente"
@@ -259,6 +260,13 @@
         <h2 class="text-xl font-semibold mb-4">Mensagem</h2>
         <form class="grid gap-4" id="form-mensagem">
           <select
+            id="remetente-mensagem"
+            class="input bg-white text-black border-gray-300 rounded-lg p-2"
+          >
+            <option value="">Selecione um remetente</option>
+            <!-- Remetentes serão carregados dinamicamente -->
+          </select>
+          <select
             class="input bg-white text-black border-gray-300 rounded-lg"
             id="cliente-mensagem"
             multiple
@@ -276,13 +284,6 @@
             class="bg-white text-black border-gray-300 rounded-lg"
             style="height: 300px"
           ></div>
-          <select
-            id="remetente-mensagem"
-            class="input bg-white text-black border-gray-300 rounded-lg p-2"
-          >
-            <option value="">Selecione um remetente</option>
-            <!-- Remetentes serão carregados dinamicamente -->
-          </select>
 
           <!-- Gerenciar Templates -->
           <input
@@ -443,17 +444,26 @@
       }
     </style>
 
-    <script src="remetentes.js"></script>
-    <script src="clientes.js"></script>
-    <script src="mensagens.js"></script>
-    <script src="programacoes.js"></script>
-    <script src="script.js"></script>
+    <script type="module" src="remetentes.js"></script>
+    <script type="module" src="clientes.js"></script>
+    <script type="module" src="mensagens.js"></script>
+    <script type="module" src="programacoes.js"></script>
+    <script type="module" src="script.js"></script>
     <script>
       document.querySelector(".Btn").addEventListener("click", () => {
         console.log("Deslogando usuário..."); // Log para depuração
         localStorage.removeItem("token"); // Remove o token do localStorage
         window.location.href = "/login.html"; // Redireciona para a página de login
       });
+    </script>
+    <script type="module">
+      import { showTab } from "./script.js";
+
+      // Associar a função showTab aos botões de navegação
+      document.getElementById("btn-config").onclick = () => showTab("config");
+      document.getElementById("btn-clientes").onclick = () => showTab("clientes");
+      document.getElementById("btn-mensagens").onclick = () => showTab("mensagens");
+      document.getElementById("btn-programacoes").onclick = () => showTab("programacoes");
     </script>
   </body>
 </html>

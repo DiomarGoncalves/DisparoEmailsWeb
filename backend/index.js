@@ -7,6 +7,9 @@ const { expressjwt: jwtMiddleware } = require('express-jwt'); // Middleware para
 const authRoutes = require('./routes/auth'); // Rotas de autenticação
 const path = require('path'); // Importação corrigida do módulo 'path'
 const fs = require('fs'); // Certifique-se de que 'fs' também está importado
+const multer = require("multer");
+const xlsx = require("xlsx");
+const upload = multer({ dest: "uploads/" }); // Diretório temporário para uploads
 
 const app = express();
 const PORT = 3000;
@@ -39,20 +42,12 @@ db.serialize(() => {
   db.run(`
     CREATE TABLE IF NOT EXISTS clientes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        nome TEXT NOT NULL,
-        email TEXT NOT NULL
+        nome TEXT,
+        email TEXT NOT NULL,
+        remetente_id INTEGER
     )
   `);
 
-  db.run(`
-    CREATE TABLE IF NOT EXISTS mensagens (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        assunto TEXT NOT NULL,
-        corpo TEXT NOT NULL,
-        anexos TEXT,
-        data_envio DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
 });
 
 // Criação das tabelas adicionais no banco de dados
@@ -186,29 +181,49 @@ app.use((err, req, res, next) => {
 
 // Rota para buscar o remetente
 app.get('/remetentes', (req, res) => {
-  db.get(`SELECT id, email, senha, smtp, porta FROM remetente LIMIT 1`, (err, row) => {
+  db.all(`SELECT id, email, smtp, porta FROM remetente`, [], (err, rows) => {
     if (err) {
-      console.error('Erro ao buscar remetente:', err.message);
-      return res.status(500).json({ success: false, error: err.message });
+      console.error('Erro ao buscar remetentes:', err.message);
+      return res.status(500).json({ success: false, error: "Erro ao buscar remetentes." });
     }
-    res.json({ success: true, remetente: row });
+    res.json({ success: true, remetentes: rows });
   });
 });
 
-// Rota para salvar o remetente
+// Rota para salvar ou editar remetente
 app.post('/remetentes', (req, res) => {
-  const { email, senha, smtp, porta } = req.body;
-  db.run(
-    `INSERT INTO remetente (email, senha, smtp, porta) VALUES (?, ?, ?, ?)`,
-    [email, senha, smtp, porta || 465],
-    function (err) {
-      if (err) {
-        console.error('Erro ao salvar remetente:', err.message);
-        return res.status(500).json({ success: false, error: err.message });
+  const { id, email, senha, smtp, porta } = req.body;
+
+  if (id) {
+    // Editar remetente existente
+    db.run(
+      `UPDATE remetente SET email = ?, senha = ?, smtp = ?, porta = ? WHERE id = ?`,
+      [email, senha, smtp, porta, id],
+      function (err) {
+        if (err) {
+          console.error('Erro ao editar remetente:', err.message);
+          return res.status(500).json({ success: false, error: err.message });
+        }
+        if (this.changes === 0) {
+          return res.status(404).json({ success: false, error: "Remetente não encontrado." });
+        }
+        res.json({ success: true });
       }
-      res.json({ success: true, id: this.lastID });
-    }
-  );
+    );
+  } else {
+    // Inserir novo remetente
+    db.run(
+      `INSERT INTO remetente (email, senha, smtp, porta) VALUES (?, ?, ?, ?)`,
+      [email, senha, smtp, porta || 465],
+      function (err) {
+        if (err) {
+          console.error('Erro ao salvar remetente:', err.message);
+          return res.status(500).json({ success: false, error: err.message });
+        }
+        res.json({ success: true, id: this.lastID });
+      }
+    );
+  }
 });
 
 // Rota para excluir o remetente
@@ -219,17 +234,6 @@ app.delete('/remetentes', (req, res) => {
       return res.status(500).json({ success: false, error: err.message });
     }
     res.json({ success: true });
-  });
-});
-
-// Corrigir a rota para buscar todos os remetentes
-app.get('/remetentes', (req, res) => {
-  db.all(`SELECT id, email, smtp, porta FROM remetente`, [], (err, rows) => {
-    if (err) {
-      console.error('Erro ao buscar remetentes:', err.message);
-      return res.status(500).json({ success: false, error: "Erro ao buscar remetentes." });
-    }
-    res.json({ success: true, remetentes: rows });
   });
 });
 
@@ -263,9 +267,14 @@ app.delete('/remetentes/:id', (req, res) => {
   });
 });
 
-// Rota para buscar clientes
+// Rota para buscar clientes com base no remetente
 app.get('/clientes', (req, res) => {
-  db.all(`SELECT id, nome, email FROM clientes`, [], (err, rows) => {
+  const { remetente_id } = req.query;
+  const query = remetente_id
+    ? `SELECT id, nome, email FROM clientes WHERE remetente_id = ?`
+    : `SELECT id, nome, email FROM clientes`;
+
+  db.all(query, remetente_id ? [remetente_id] : [], (err, rows) => {
     if (err) {
       console.error('Erro ao buscar clientes:', err.message);
       return res.status(500).json({ success: false, error: err.message });
@@ -274,20 +283,125 @@ app.get('/clientes', (req, res) => {
   });
 });
 
-// Rota para salvar cliente
+// Rota para salvar ou editar cliente
 app.post('/clientes', (req, res) => {
-  const { nome, email } = req.body;
-  db.run(
-    `INSERT INTO clientes (nome, email) VALUES (?, ?)`,
-    [nome, email],
-    function (err) {
-      if (err) {
-        console.error('Erro ao salvar cliente:', err.message);
-        return res.status(500).json({ success: false, error: err.message });
+  const { id, nome, email, remetente_id } = req.body;
+
+  if (id) {
+    // Editar cliente existente
+    db.run(
+      `UPDATE clientes SET nome = ?, email = ?, remetente_id = ? WHERE id = ?`,
+      [nome, email, remetente_id, id],
+      function (err) {
+        if (err) {
+          console.error('Erro ao editar cliente:', err.message);
+          return res.status(500).json({ success: false, error: err.message });
+        }
+        if (this.changes === 0) {
+          return res.status(404).json({ success: false, error: "Cliente não encontrado." });
+        }
+        res.json({ success: true });
       }
-      res.json({ success: true, id: this.lastID });
+    );
+  } else {
+    // Inserir novo cliente
+    db.run(
+      `INSERT INTO clientes (nome, email, remetente_id) VALUES (?, ?, ?)`,
+      [nome, email, remetente_id],
+      function (err) {
+        if (err) {
+          console.error('Erro ao salvar cliente:', err.message);
+          return res.status(500).json({ success: false, error: err.message });
+        }
+        res.json({ success: true, id: this.lastID });
+      }
+    );
+  }
+});
+
+// Rota para exportar clientes
+app.get("/clientes/exportar", (req, res) => {
+  db.all(`SELECT nome, email FROM clientes`, [], (err, rows) => {
+    if (err) {
+      console.error("Erro ao buscar clientes para exportação:", err.message);
+      return res.status(500).json({ success: false, error: "Erro ao buscar clientes." });
     }
-  );
+
+    const workbook = xlsx.utils.book_new();
+    const worksheet = xlsx.utils.json_to_sheet(rows);
+    xlsx.utils.book_append_sheet(workbook, worksheet, "Clientes");
+
+    const buffer = xlsx.write(workbook, { type: "buffer", bookType: "xlsx" });
+    res.setHeader("Content-Disposition", "attachment; filename=clientes.xlsx");
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.send(buffer);
+  });
+});
+
+// Rota para importar clientes
+app.post("/clientes/importar", upload.single("file"), (req, res) => {
+  const remetenteId = req.body.remetente_id;
+
+  if (!req.file) {
+    return res.status(400).json({ success: false, error: "Nenhum arquivo enviado." });
+  }
+
+  if (!remetenteId) {
+    return res.status(400).json({ success: false, error: "Remetente não selecionado." });
+  }
+
+  try {
+    const workbook = xlsx.readFile(req.file.path);
+    const sheetName = workbook.SheetNames[0];
+    const data = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
+
+    const insertPromises = data.map((cliente) => {
+      return new Promise((resolve, reject) => {
+        if (!cliente.email) {
+          return reject(new Error("O campo 'email' é obrigatório."));
+        }
+
+        db.run(
+          `INSERT INTO clientes (nome, email, remetente_id) VALUES (?, ?, ?)`,
+          [cliente.nome || null, cliente.email, remetenteId],
+          (err) => {
+            if (err) reject(err);
+            else resolve();
+          }
+        );
+      });
+    });
+
+    Promise.all(insertPromises)
+      .then(() => {
+        res.json({ success: true });
+      })
+      .catch((err) => {
+        console.error("Erro ao importar clientes:", err.message);
+        res.status(400).json({ success: false, error: err.message });
+      })
+      .finally(() => {
+        fs.unlinkSync(req.file.path); // Remove o arquivo temporário
+      });
+  } catch (error) {
+    console.error("Erro ao processar arquivo de importação:", error.message);
+    res.status(500).json({ success: false, error: "Erro ao processar arquivo." });
+  }
+});
+
+// Rota para buscar um cliente específico
+app.get('/clientes/:id', (req, res) => {
+  const { id } = req.params;
+  db.get(`SELECT id, nome, email, remetente_id FROM clientes WHERE id = ?`, [id], (err, row) => {
+    if (err) {
+      console.error('Erro ao buscar cliente:', err.message);
+      return res.status(500).json({ success: false, error: err.message });
+    }
+    if (!row) {
+      return res.status(404).json({ success: false, error: "Cliente não encontrado." });
+    }
+    res.json({ success: true, cliente: row });
+  });
 });
 
 // Rota para excluir cliente
@@ -304,7 +418,7 @@ app.delete('/clientes/:id', (req, res) => {
 
 // Rota para buscar templates
 app.get('/templates', (req, res) => {
-  db.all(`SELECT id, nome, assunto, corpo FROM templates`, [], (err, rows) => {
+  db.all(`SELECT id, nome, assunto, corpo, remetente_id FROM templates`, [], (err, rows) => {
     if (err) {
       console.error('Erro ao buscar templates:', err.message);
       return res.status(500).json({ success: false, error: err.message });
@@ -315,10 +429,15 @@ app.get('/templates', (req, res) => {
 
 // Rota para salvar template
 app.post('/templates', (req, res) => {
-  const { nome, assunto, corpo, emails } = req.body;
+  const { nome, assunto, corpo, remetente_id, clientes } = req.body;
+
+  if (!remetente_id) {
+    return res.status(400).json({ success: false, error: "Remetente é obrigatório para o template." });
+  }
+
   db.run(
-    `INSERT INTO templates (nome, assunto, corpo) VALUES (?, ?, ?)`,
-    [nome, assunto, corpo],
+    `INSERT INTO templates (nome, assunto, corpo, remetente_id) VALUES (?, ?, ?, ?)`,
+    [nome, assunto, corpo, remetente_id],
     function (err) {
       if (err) {
         console.error('Erro ao salvar template:', err.message);
@@ -326,12 +445,12 @@ app.post('/templates', (req, res) => {
       }
       const templateId = this.lastID;
 
-      // Salvar os e-mails associados ao template
-      const insertEmails = emails.map((email) => {
+      // Salvar os clientes associados ao template
+      const insertClientes = clientes.map((clienteEmail) => {
         return new Promise((resolve, reject) => {
           db.run(
             `INSERT INTO template_emails (template_id, email) VALUES (?, ?)`,
-            [templateId, email],
+            [templateId, clienteEmail],
             (err) => {
               if (err) reject(err);
               else resolve();
@@ -340,14 +459,26 @@ app.post('/templates', (req, res) => {
         });
       });
 
-      Promise.all(insertEmails)
+      Promise.all(insertClientes)
         .then(() => res.json({ success: true, id: templateId }))
         .catch((emailErr) => {
-          console.error('Erro ao salvar e-mails do template:', emailErr.message);
+          console.error('Erro ao salvar clientes do template:', emailErr.message);
           res.status(500).json({ success: false, error: emailErr.message });
         });
     }
   );
+});
+
+// Rota para buscar clientes associados a um template
+app.get('/templates/:id/clientes', (req, res) => {
+  const { id } = req.params;
+  db.all(`SELECT email FROM template_emails WHERE template_id = ?`, [id], (err, rows) => {
+    if (err) {
+      console.error('Erro ao buscar clientes do template:', err.message);
+      return res.status(500).json({ success: false, error: err.message });
+    }
+    res.json({ success: true, clientes: rows.map((row) => row.email) });
+  });
 });
 
 // Rota para excluir template
@@ -360,7 +491,7 @@ app.delete('/templates/:id', (req, res) => {
     }
     db.run(`DELETE FROM template_emails WHERE template_id = ?`, [id], (emailErr) => {
       if (emailErr) {
-        console.error('Erro ao excluir e-mails associados ao template:', emailErr.message);
+        console.error('Erro ao excluir clientes associados ao template:', emailErr.message);
         return res.status(500).json({ success: false, error: emailErr.message });
       }
       res.json({ success: true });
@@ -430,22 +561,68 @@ app.post('/programacoes/:id/toggle', (req, res) => {
   );
 });
 
-// Rota para salvar remetente
-app.post('/remetentes', (req, res) => {
-  const { email, senha, smtp, porta } = req.body;
+// Rota para enviar mensagens
+app.post("/mensagens/enviar", async (req, res) => {
+  const { remetente_id, assunto, corpo, destinatarios } = req.body;
 
-  db.run(
-    `INSERT INTO remetente (email, senha, smtp, porta) VALUES (?, ?, ?, ?)`,
+  if (!remetente_id || !assunto || !corpo || !destinatarios || destinatarios.length === 0) {
+    return res.status(400).json({ success: false, error: "Dados incompletos para envio de mensagem." });
+  }
 
-    [email, senha, smtp, porta || 465],
-    function (err) {
-      if (err) {
-        console.error('Erro ao salvar remetente:', err.message);
-        return res.status(500).json({ success: false, error: err.message });
+  try {
+    // Buscar remetente no banco de dados
+    db.get(`SELECT email, senha, smtp, porta FROM remetente WHERE id = ?`, [remetente_id], async (err, remetente) => {
+      if (err || !remetente) {
+        console.error("Erro ao buscar remetente:", err?.message || "Remetente não encontrado.");
+        return res.status(500).json({ success: false, error: "Erro ao buscar remetente." });
       }
-      res.json({ success: true, id: this.lastID });
-    }
-  );
+
+      // Configuração do transporte SMTP
+      const nodemailer = require("nodemailer");
+      const transporter = nodemailer.createTransport({
+        host: remetente.smtp,
+        port: remetente.porta,
+        secure: remetente.porta === 465, // SSL/TLS
+        auth: {
+          user: remetente.email,
+          pass: remetente.senha,
+        },
+      });
+
+      // Se "todos os clientes" for selecionado, buscar todos os e-mails no banco
+      let emailsParaEnviar = destinatarios;
+      if (destinatarios.includes("all")) {
+        const clientes = await new Promise((resolve, reject) => {
+          db.all(`SELECT email FROM clientes`, [], (err, rows) => {
+            if (err) reject(err);
+            else resolve(rows.map((cliente) => cliente.email));
+          });
+        });
+        emailsParaEnviar = clientes;
+      }
+
+      // Enviar e-mails para os destinatários
+      const envioPromises = emailsParaEnviar.map((destinatario) => {
+        return transporter.sendMail({
+          from: remetente.email,
+          to: destinatario,
+          subject: assunto,
+          html: corpo,
+        });
+      });
+
+      try {
+        await Promise.all(envioPromises);
+        res.json({ success: true });
+      } catch (emailError) {
+        console.error("Erro ao enviar mensagens:", emailError.message);
+        res.status(500).json({ success: false, error: "Erro ao enviar mensagens." });
+      }
+    });
+  } catch (error) {
+    console.error("Erro ao processar envio de mensagens:", error.message);
+    res.status(500).json({ success: false, error: "Erro ao processar envio de mensagens." });
+  }
 });
 
 // Rota para favicon (opcional, pode ser um arquivo real ou ignorado)
@@ -474,4 +651,33 @@ app.get('/register', (req, res) => {
 // Iniciar o servidor
 app.listen(PORT, () => {
   console.log(`Servidor rodando em http://localhost:${PORT}`);
+});
+
+// Alterar a tabela clientes para que o campo nome não seja obrigatório
+db.serialize(() => {
+  db.run(`ALTER TABLE clientes RENAME TO clientes_old`, (err) => {
+    if (err && !err.message.includes("already exists")) {
+      console.error("Erro ao renomear tabela clientes:", err.message);
+    }
+  });
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS clientes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      nome TEXT,
+      email TEXT NOT NULL,
+      remetente_id INTEGER
+    )
+  `);
+
+  db.run(`
+    INSERT INTO clientes (id, nome, email, remetente_id)
+    SELECT id, nome, email, remetente_id FROM clientes_old
+  `);
+
+  db.run(`DROP TABLE clientes_old`, (err) => {
+    if (err) {
+      console.error("Erro ao remover tabela antiga clientes:", err.message);
+    }
+  });
 });

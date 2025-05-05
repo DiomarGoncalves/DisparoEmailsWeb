@@ -1,11 +1,11 @@
-function showTab(tabId) {
+export function showTab(tabId) {
   document
     .querySelectorAll(".tab")
     .forEach((tab) => tab.classList.add("hidden"));
   document.getElementById("tab-" + tabId).classList.remove("hidden");
 }
 
-function showFeedback(message, type) {
+export function showFeedback(message, type) {
   const feedback = document.getElementById("feedback");
   feedback.textContent = message;
   feedback.className = `p-4 mb-4 text-white rounded ${
@@ -15,7 +15,6 @@ function showFeedback(message, type) {
   setTimeout(() => feedback.classList.add("hidden"), 5000);
 }
 
-// Tornar fetchWithAuth global
 export async function fetchWithAuth(url, options = {}) {
   const token = localStorage.getItem("token");
 
